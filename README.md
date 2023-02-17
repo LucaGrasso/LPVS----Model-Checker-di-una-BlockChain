@@ -9,6 +9,9 @@
 Ringrazio le uniche due persone che mi sostengono in questo percorso.
 
 
+Per una donazione, se il mio lavoro è stato utile un caffe in segno di amicizia, altrimenti anche un messaggio di ringraziamento.
+
+cup of coffe
 https://www.paypal.com/donate/?hosted_button_id=A3AQE2CXQ79CN
 
 
