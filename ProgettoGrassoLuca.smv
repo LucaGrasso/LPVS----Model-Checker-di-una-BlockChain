@@ -1,0 +1,449 @@
+--------------------------------PROJECT LPVS 2023S1 appello 3 ---------------- 
+--
+------------------ Grasso Luca
+------------------ Matricola: 294612      
+------------------ Docente: Alessandro Aldini   
+--
+--
+--	Istruzioni.
+--	per una ottima lettura, utilizzare Notepad++ o programmi similari.
+--	
+--	comandi per eseguire il progetto consigliati in seguenza
+--	
+--	a) con console interattiva:
+--	
+--	nusmv -int
+--	read_model -i nome_progetto
+--	go
+--	pick_state -r
+--	simulate -r -k30
+--	show_traces
+--	check_property
+--	show_property
+--	
+--	b) solo per verifica:
+--
+--	nusmv nome_file
+--
+--
+-- _______________________________________________________________________________________________________________
+-- Progetto: A Pub-Sub Architecture to Promote Blockchain Interoperability
+
+-- Il progetto proposto analizza un sistema publisher e subriber in un sistema
+-- Smart Contract
+
+-- Soluzione Proposta:
+
+-- Modello:
+-- a) N° 3 Publisher:
+--		   che potranno gestire la pubblicazione di 1 topic e il suo aggiornameto
+-- b) N° 4 Subscriber:
+--		   che potranno sottoscrivere o annnullare l'iscrizione a qualsiasi Topic esistente
+-- c) N° 1 Broker Blockchain:
+--	       il connector e topics del smart contract sono in un unico modulo Broker. Il connector in modo
+--		   non determiniscono decide l'accesso tra i publisher o subscriber. Il Broker può contenere al massimo 5
+--		   Topic
+-- 
+--_______________________________________________________________________________________________________________ 
+ 
+--------------------------------MAIN----------------------------------
+
+MODULE main
+    VAR
+		-- Moduli publisher che ha in Topic ID (id e messaggio) e si iscrivono allo Smart Contract
+        p1 : publisher(2, bb);
+        p2 : publisher(1, bb);
+        p3 : publisher(4, bb);
+        
+		-- Moduli subscriber si iscrivono allo Smart Contract
+        s1 : subscriber(bb);
+        s2 : subscriber(bb);
+        s3 : subscriber(bb);
+        s4 : subscriber(bb);
+		
+		-- Modulo Smart Contracs che accetta 3 publishers e 4 subscribers
+		bb : BrokerBlockchain(p1, p2, p3, s1, s2, s3, s4);
+
+--------------------------- PROPERTY -------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+---------------- CTLSPECS section
+--
+-- FAQ
+-- Computation Tree Logic 
+--
+-- A CTL formula holds if it holds in ALL initial states. For the provided
+-- example, there are 2 initial states, one of which violates one
+-- specification and the other initial state violates the other
+-- specification.
+--
+-- AG p is true in a state s0 if for all infinite series of transitions s0 → s1, s1 → s2, . . . p is true in every si.
+-- AF p is true in a state s0 if for all series of transitions s0 → s1, s1 → s2, . . . , sn−1 → sn p is true in sn.
+-- A[p U q] is true in a state s0 if for all series of transitions s0 → s1, s1 → s2, . . . , sn−1 → sn p is true in every state from s0 to sn−1 and q is true in state sn.
+-- EX p is true in a state s if there exists a state s`such that a transition goes from s to s`and p is true in s`.
+-- EG p is true in a state s0 if there exists an infinite series of transitions s0 → s1, s1 → s2, . . . such that p is true in every si
+-- EF p is true in a state s0 if there exists a series of transitions s0 → s1, s1 → s2, . . . , sn−1 → sn such that p is true in sn.
+--
+-------- PUBLISHER SECTION
+--
+-- Unreachability (safety condition 1)
+-- Property 0
+--			 Verifico se ogni Publisher possano creare un Topic senza 
+--			 essere passato nella fase di EnrollingP
+--           I Topic controllati devono essere gli stessi assegnati nel main
+--			 VERO l'esempio farà riferimento alle fase iniziali, dove nessun Topic è stato creato
+--			 e non accadrà finchè il Connector non darà il permesso.
+
+
+-- EX se esiste uno stato che è vera quel S'.
+CTLSPEC
+AG !(EX((p1.state = enroll) & EX bb.tcreatedID[1] = 1) | EX((p2.state = enroll) & EX bb.tcreatedID[1] = 1) | EX((p3.state = enroll) & EX bb.tcreatedID[4] = 1))
+-- VERO
+
+
+-- Property 1
+-- Reachability (safety condition 2)
+--			Tutti i Publisher creano il loro topic qualsiasi esso sia in qualsiasi percorso.
+--		    VERO in qualsiasi percorso i Topics assegnati verranno creati.
+CTLSPEC
+EF ((p1.created = 1) & (p2.created = 1) & (p3.created = 1)) 
+-- VERO
+
+-- Property 2 3 4 
+-- Unreachability (safety condition 3)
+--			Tutti i Publisher non possono aggiornare il loro Topics se non è stato creato.
+--		    VERO il publisher non può chiedere di aggiornare il suo Topic se non l'ha prima oppurtamente registrato
+--			secondo le regole dello Smart Contract
+CTLSPEC
+AG !((p1.state = publish) & (p1.created = 0))
+-- VERO
+
+CTLSPEC
+AG !((p2.state = publish) & (p2.created = 0))
+-- VERO
+CTLSPEC
+
+AG !((p3.state = publish) & (p3.created = 0))
+-- VERO
+
+-- Property 5 6 7
+-- Reachability 
+--			Tutti i publisher aggiornano il loro Topics almeno 1 volta.
+--		    VERO
+-- 
+CTLSPEC
+EF ((p1.state = publish & (p1.created = 1)))
+-- VERO
+CTLSPEC
+EF ((p2.state = publish & (p2.created = 1)))
+-- VERO
+CTLSPEC
+EF ((p3.state = publish & (p3.created = 1)))
+-- VERO
+
+-------- TOPICS SMART CONTRACTS SECTION
+--
+-- Reachability (safety condition 4)
+-- Property 8
+--			Verifico che nessun Topic non assegnato a un Publisher venga mai creato.
+--          VERO i Topic non creati da nessun Publisher rimangono non creati e non assegnati.
+CTLSPEC
+A [ ( bb.tcreatedID[3] = 0 ) U ( bb.tcreatedID[5] = 0) ]
+-- VERO
+
+-------- SUBSCRIBER SECTION
+--
+-- Unreachability (safety condition 5)
+-- Property 9
+--			 Verifico se un Subscribter generico, senza essere passato nella fase di EnrollingS del connector, 
+--           possa essere iscritto a qualche Topics.
+--			 VERO: senza essersi registrato, un subscriber non può sottoscriversi a nessun Topics
+CTLSPEC
+AG !((s2.state = enroll | s2.state = idle) & ((s2.subscribedID[1] = 1) | (s2.subscribedID[2] = 1) | (s2.subscribedID[3] = 1) | (s2.subscribedID[4] = 1) | (s2.subscribedID[5] = 1)))
+-- VERO
+
+--------------------------------------------------------------
+---------------- LTLSPECS section
+--
+--
+-- FAQ
+--  Linear Temporal Logic 
+--  In LTL, one can encode formulae about the future of paths.
+--
+-- F p is true at time t if p is true at some time t' ≥ t.
+-- G p is true at time t if p is true at all times t' ≥ t.
+-- X p is true at time t if p is true at time t + 1.
+-- H p is true at time t if p holds in all previous time steps t' ≤ t.
+
+
+-------- PUBLISHER SECTION
+
+-- Property 10 11 12 13
+-- 			  Verifica della creazione di tutti i topic assegnati da parte ai PUBLISHER.
+
+--            Singole Creazioni	
+-- 			  Verifico se un singolo Publisher crea il suo Topic allo step successivo
+LTLSPEC
+F ((p1.state = create) &  (bb.tcreatedID[2] = 0) -> F (bb.tcreatedID[2] = 1))
+-- VERO
+LTLSPEC
+F ((p2.state = create) &  (bb.tcreatedID[1] = 0) -> F (bb.tcreatedID[1] = 1))
+-- VERO
+LTLSPEC
+F ((p3.state = create) &  (bb.tcreatedID[4] = 0) -> F (bb.tcreatedID[4] = 1))
+-- VERO
+--			 Creazioni Contemporanee
+-- 			 Creazione Multipla nello stesso momento di topic per tutti i Publisher
+-- 			 FALSO perchè lo scheduler dello Smart Contact ha la decisioni di quanti possono accedere simultaneamente.
+LTLSPEC
+G ((p1.state = connected &  p2.state = connected & p3.state = connected) ->  F ((p1.state = create) & (p2.state = create) & (p3.state = create)))
+-- FALSO
+
+
+-- Property 14
+--			Verifico se annullare una sottoscrizione a un topic e` sempre automatico se il Subscriber
+-- 			osserva un determinato Topic (Verifico la capacita` non deterministica)
+--			FALSO 
+LTLSPEC
+G ( F s1.state = unsubscribe & G bb.tcreatedID[1] = 1 -> G (s1.subscribedID[1] = 0))
+-- FALSO
+
+-------------------------------------- MODULO PUBLISHER --------------------------------------
+MODULE publisher(topicID, broker)
+    VAR
+		-- idle       : in attesa di azioni da parte dell`utente.
+		-- enroll     : fase di connessione al contract.
+        -- connected  : l`applicazione rimane sempre connessa.	
+        -- create     : l`applicazione crea il Topic al quale e` stata designata.
+        -- publish    : l`applicazione modifica il suo Topic.
+	
+        state : {idle, enroll, connected, create, publish};
+
+        -- Mutex, variabile che mi determina se il Topic del Publisher è stato creato.
+        created : {0, 1};
+		
+/--		                         _________________
+                                |                 |
+								V			      |
+       idle --> enroll --> connected --> create  -|
+	                            |                 |
+	                            |------> publish -|
+
+
+--/	
+				
+    ASSIGN
+        init(state) := idle;
+        init(created) := 0;       
+        next(state) :=
+            case
+                (state = idle)                                                  : enroll;
+                (state = enroll) & (broker.state = enrollingP)                  : connected;
+                (state = connected) & (created = 0 & broker.state = enrollingP) : {state, create};
+                (state = create)                                                : connected;
+                
+				-- in modo non deterministico il applicazione Publisher puo decidere se stare connesso e
+				-- attuare nessuna operazione oppure entrare in modalità modifica del Topic.
+                (created = 1) & (broker.state = enrollingP)                     : {state, publish};
+				
+				
+                (state = create) | (state = publish)                            : connected;
+                TRUE : state;
+            esac;
+			
+
+        next(created) :=
+            case
+                state = create : 1; 
+                TRUE : created;
+            esac;
+
+-------------------------------------- BROKER BLOCKCHAIN --------------------------------------
+-- Il modulo simula un accesso di 3 publisher e 4 subscribter.
+-- Si possono creare al massimo 5 Topics ma la questo Broker prendendo solo 3 Publisher, lasciarà 2 spazi vuoti.
+
+MODULE BrokerBlockchain(pub1, pub2, pub3, sub1, sub2, sub3, sub4)
+    
+	VAR 
+		-- idle       : in attesa di azioni da parte di una applicazione specifica.
+		-- enrollingP : fase di connessione di una applicazione come publisher al connector.
+        -- enrollingS : fase di connessione di una applicazione come subscriber al connector.		
+        -- createTopic: crezione e pubblicazione di un determinato Topic.
+        -- updateTopic: aggiornamento di un determinato Topic.
+		
+        state : {idle, createTopic, updateTopic, enrollingP, enrollingS};
+	
+		-- Array che simula la tecnologià di archiviazione dei Topics dell Smart Contract
+		-- con valore 0 il Topic non è creato
+		-- cpn valore 1 il Topic è correttamente creato e pubblicato.
+		tcreatedID: array 1..5 of {0, 1};
+
+
+/--                              
+          ____________________________________
+         |                                    |
+         |            |------> createTopic -->|
+         v            |                       |
+       idle --> enrollingP --> updateTopic -->|
+         |                                    |
+         |----> enrollingS ------------------>|
+
+
+--/ 
+
+    ASSIGN
+        init(state) := idle;
+		init(tcreatedID[1]) := 0;
+		init(tcreatedID[2]) := 0;
+        init(tcreatedID[3]) := 0;
+		init(tcreatedID[4]) := 0;
+		init(tcreatedID[5]) := 0;
+	
+        next(state) :=
+            case
+			
+				-- In modo non deterministico, il Connector puo attendere di connettersi in una modalità
+				-- oppure attendere
+                state = idle : {state, enrollingP, enrollingS};               
+
+				
+                (state = enrollingP) & ((pub1.state = create) & pub1.created = 0): createTopic;
+                (state = enrollingP) & ((pub2.state = create) & pub2.created = 0): createTopic;
+                (state = enrollingP) & ((pub3.state = create) & pub3.created = 0): createTopic;
+								
+                (state = enrollingP) & (pub1.state = publish) : updateTopic;
+                (state = enrollingP) & (pub2.state = publish) : updateTopic;
+                (state = enrollingP) & (pub3.state = publish) : updateTopic;
+				
+				(state != enrollingP) : idle;
+				
+				
+                TRUE : state;
+            esac;			
+			
+    -- Creo il topic se ho lo stato è in creazione e se il topic appartiene al giusto PUBlISHER 
+        next(tcreatedID[1]) :=
+            case 
+                state = createTopic & ((pub1.topicID = 1) | (pub2.topicID = 1) | (pub3.topicID = 1)): 1; 
+                TRUE : tcreatedID[1];
+            esac;
+        next(tcreatedID[2]) :=
+            case
+                state = createTopic & ((pub1.topicID = 2) | (pub2.topicID = 2) | (pub3.topicID = 1)): 1; 
+                TRUE : tcreatedID[2];
+            esac;
+        next(tcreatedID[3]) :=
+            case
+                state = createTopic & ((pub1.topicID = 3) | (pub2.topicID = 3) | (pub3.topicID = 3)): 1; 
+                TRUE : tcreatedID[3];
+            esac;
+			
+		next(tcreatedID[4]) :=
+            case
+                state = createTopic & ((pub1.topicID = 4) | (pub2.topicID = 4) | (pub3.topicID = 4)): 1; 
+                TRUE : tcreatedID[4];
+            esac;	
+			
+		next(tcreatedID[5]) :=
+            case
+                state = createTopic & ((pub1.topicID = 5) | (pub2.topicID = 5) | (pub3.topicID = 5)): 1; 
+                TRUE : tcreatedID[5];
+            esac;	
+
+-------------------------------------- MODULO SUBSCRIBER TOPIC --------------------------------------
+MODULE subscriber(broker)
+    VAR
+		-- idle       : in attesa di azioni da parte dell`utente.
+		-- enroll     : fase di connessione al contract.
+        -- connected  : l`applicazione rimane sempre connessa.	
+        -- subscribe  : l`applicazione puo` sottoscrivere in modo non deterministico a Topics.
+        -- unsubscribe: l`applicazione puo` annullare la sottoscrizione in modo non deterministico a Topics.
+		-- updated    : l`applicazione riceve una notifica di Topics modificati.
+		-- epsilon	  : l-applicazione in modo non deterministico non attua nessuna operazione.
+		
+        state : {idle, enroll, connected, subscribe, unsubscribe, updated, epsilon};
+        subscribedID : array 1..5 of {0, 1};
+		
+/--		                         _______________________
+                                |						|
+								|                       |
+								V			            |
+       idle --> enroll --> connected -->  subscribe --->|
+	                            |                       |
+	                            |------> unsubscribe -->|
+							    |                       |
+	                            |------>  updated  ---->|
+								|					    |
+	                            |------>  epsilon  ---->|
+--/			
+		
+		
+    ASSIGN
+        init(state) := idle;
+        init(subscribedID[1]) := 0;
+		init(subscribedID[2]) := 0;
+		init(subscribedID[3]) := 0;
+		init(subscribedID[4]) := 0;
+		init(subscribedID[5]) := 0;
+		
+        next(state) :=
+            case
+                (state = idle) : enroll;
+				
+                (state = enroll) & (broker.state = enrollingS) : connected;
+				
+				
+				-- in modo non deterministico il applicazione Subscriber può decidere se stare connesso e
+				-- attuare nessuna operazione oppure sottoscrivere  o non annullare l'iscrizione di un Topic
+                (state = connected) : {state, epsilon, subscribe, unsubscribe};
+				
+				-- il primo Topic che ho sottoscritto e ha subito un Update, il Subscribter ottiene una notifica
+				(broker.state = updateTopic) & (subscribedID[1] = 1) : updated; 
+				(broker.state = updateTopic) & (subscribedID[2] = 1) : updated; 
+                (broker.state = updateTopic) & (subscribedID[3] = 1) : updated;
+                (broker.state = updateTopic) & (subscribedID[4] = 1) : updated;
+				(broker.state = updateTopic) & (subscribedID[5] = 1) : updated;  				
+
+                (state = subscribe) | (state = unsubscribe) | (state = updated) | (state = epsilon) : connected;
+				
+                TRUE : state;
+            esac;
+		
+		
+		-- In modo non deterministico le varie operazioni di sottoscrizione e annullamento, sono casuali ma attivabili solo in presenza
+		-- dell`opportunea opzione.
+        next(subscribedID[1]) :=
+            case
+                (state = subscribe)   & (subscribedID[1] = 0) & (broker.tcreatedID[1] = 1): {0, 1};
+                (state = unsubscribe) & (subscribedID[1] = 1) & (broker.tcreatedID[1] = 1): {0, 1};
+                TRUE : subscribedID[1];
+            esac;
+			
+		next(subscribedID[2]) :=
+            case
+                (state = subscribe)   & (subscribedID[2] = 0) & (broker.tcreatedID[2] = 1): {0, 1};
+                (state = unsubscribe) & (subscribedID[2] = 1) & (broker.tcreatedID[2] = 1): {0, 1};
+                TRUE : subscribedID[2];
+        esac;
+
+        next(subscribedID[3]) :=
+            case
+                (state = subscribe)   & (subscribedID[3] = 0) & (broker.tcreatedID[3] = 1): {0, 1};
+                (state = unsubscribe) & (subscribedID[3] = 1) & (broker.tcreatedID[3] = 1): {0, 1};
+                TRUE : subscribedID[3];
+        esac;
+		
+		next(subscribedID[4]) :=
+            case
+                (state = subscribe)   & (subscribedID[4] = 0) & (broker.tcreatedID[4] = 1): {0, 1};
+                (state = unsubscribe) & (subscribedID[4] = 1) & (broker.tcreatedID[4] = 1): {0, 1};
+                TRUE : subscribedID[4];
+        esac;
+		
+		next(subscribedID[5]) :=
+            case
+                (state = subscribe)   & (subscribedID[5] = 0) & (broker.tcreatedID[5] = 1): {0, 1};
+                (state = unsubscribe) & (subscribedID[5] = 1) & (broker.tcreatedID[5] = 1): {0, 1};
+                TRUE : subscribedID[5];
+        esac;
+
