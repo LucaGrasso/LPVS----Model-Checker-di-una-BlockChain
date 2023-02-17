@@ -9,4 +9,6 @@
 Ringrazio le uniche due persone che mi sostengono in questo percorso.
 
 
+https://www.paypal.com/donate/?hosted_button_id=A3AQE2CXQ79CN
+
 
